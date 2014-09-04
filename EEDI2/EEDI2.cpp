@@ -26,15 +26,9 @@
 */
 
 #include <algorithm>
+#include <vector>
 #include "VapourSynth.h"
 #include "VSHelper.h"
-
-const int limlut[33] = {
-    6, 6, 7, 7, 8, 8, 9, 9, 9, 10,
-    10, 11, 11, 12, 12, 12, 12, 12, 12, 12,
-    12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-    12, -1, -1
-};
 
 struct EEDI2Data {
     VSNodeRef * node;
@@ -43,19 +37,8 @@ struct EEDI2Data {
     int field, mthresh, lthresh, vthresh, estr, dstr, maxd, map, nt, pp;
     int fieldS;
     int * cx2, * cy2, * cxy, * tmpc;
+    std::vector<int> limlut;
 };
-
-static void SortMetrics(int *order, int length) {
-    for (int i = 1; i < length; i++) {
-        int j = i;
-        const int temp = order[j];
-        while (j > 0 && order[j - 1] > temp) {
-            order[j] = order[j - 1];
-            j--;
-        }
-        order[j] = temp;
-    }
-}
 
 static void BuildEdgeMask(uint8_t *dstp, const uint8_t *srcp, int width, int height, int stride, const EEDI2Data *d) {
     memset(dstp, 0, height * stride);
@@ -65,9 +48,9 @@ static void BuildEdgeMask(uint8_t *dstp, const uint8_t *srcp, int width, int hei
     const uint8_t * srcpn = srcp + stride;
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
-            if ((abs(srcpp[x] - srcp[x]) < 10 && abs(srcp[x] - srcpn[x]) < 10 && abs(srcpp[x] - srcpn[x]) < 10) ||
-                (abs(srcpp[x - 1] - srcp[x - 1]) < 10 && abs(srcp[x - 1] - srcpn[x - 1]) < 10 && abs(srcpp[x - 1] - srcpn[x - 1]) < 10 &&
-                 abs(srcpp[x + 1] - srcp[x + 1]) < 10 && abs(srcp[x + 1] - srcpn[x + 1]) < 10 && abs(srcpp[x + 1] - srcpn[x + 1]) < 10))
+            if ((std::abs(srcpp[x] - srcp[x]) < 10 && std::abs(srcp[x] - srcpn[x]) < 10 && std::abs(srcpp[x] - srcpn[x]) < 10) ||
+                (std::abs(srcpp[x - 1] - srcp[x - 1]) < 10 && std::abs(srcp[x - 1] - srcpn[x - 1]) < 10 && std::abs(srcpp[x - 1] - srcpn[x - 1]) < 10 &&
+                 std::abs(srcpp[x + 1] - srcp[x + 1]) < 10 && std::abs(srcp[x + 1] - srcpn[x + 1]) < 10 && std::abs(srcpp[x + 1] - srcpn[x + 1]) < 10))
                 continue;
             const int sum = srcpp[x - 1] + srcpp[x] + srcpp[x + 1] +
                             srcp[x - 1] + srcp[x] + srcp[x + 1] +
@@ -79,7 +62,7 @@ static void BuildEdgeMask(uint8_t *dstp, const uint8_t *srcp, int width, int hei
                 continue;
             const int Ix = srcp[x + 1] - srcp[x - 1];
             const int Iy = std::max(std::max(std::abs(srcpp[x] - srcpn[x]), std::abs(srcpp[x] - srcp[x])), std::abs(srcp[x] - srcpn[x]));
-            if (Ix*Ix + Iy*Iy >= d->mthresh) {
+            if (Ix * Ix + Iy * Iy >= d->mthresh) {
                 dstp[x] = 255;
                 continue;
             }
@@ -219,8 +202,8 @@ static void CalcDirections(const uint8_t *mskp, const uint8_t *srcp, uint8_t *ds
                 continue;
             const int startu = std::max(-x + 1, -maxdt);
             const int stopu = std::min(width - 2 - x, maxdt);
-            int minb = std::min(13 * d->nt, (std::abs(srcp[x] - srcpn[x]) + std::abs(srcp[x] - srcpp[x])) * 6);
             int mina = std::min(19 * d->nt, (std::abs(srcp[x] - srcpn[x]) + std::abs(srcp[x] - srcpp[x])) * 9);
+            int minb = std::min(13 * d->nt, (std::abs(srcp[x] - srcpn[x]) + std::abs(srcp[x] - srcpp[x])) * 6);
             int minc = mina;
             int mind = minb;
             int mine = minb;
@@ -283,9 +266,9 @@ static void CalcDirections(const uint8_t *mskp, const uint8_t *srcp, uint8_t *ds
             if (dire != -5000)
                 order[k++] = dire;
             if (k > 1) {
-                SortMetrics(order, k);
+                std::sort(order, order + k);
                 const int mid = k & 1 ? order[k >> 1] : (order[(k - 1) >> 1] + order[k >> 1] + 1) >> 1;
-                const int tlim = std::max(limlut[std::abs(mid)] >> 2, 2);
+                const int tlim = std::max(d->limlut[std::abs(mid)] >> 2, 2);
                 int sum = 0, count = 0;
                 for (int i = 0; i < k; i++) {
                     if (std::abs(order[i] - mid) <= tlim) {
@@ -415,9 +398,9 @@ static void FilterDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dst
                 dstp[x] = 255;
                 continue;
             }
-            SortMetrics(order, u);
+            std::sort(order, order + u);
             const int mid = u & 1 ? order[u >> 1] : (order[(u - 1) >> 1] + order[u >> 1] + 1) >> 1;
-            const int lim = limlut[std::abs(mid - 128) >> 2];
+            const int lim = d->limlut[std::abs(mid - 128) >> 2];
             int sum = 0, count = 0;
             for (int i = 0; i < u; i++) {
                 if (std::abs(order[i] - mid) <= lim) {
@@ -478,9 +461,9 @@ static void FilterDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *d
                 dstp[x] = 255;
                 continue;
             }
-            SortMetrics(order, u);
+            std::sort(order, order + u);
             const int mid = u & 1 ? order[u >> 1] : (order[(u - 1) >> 1] + order[u >> 1] + 1) >> 1;
-            const int lim = limlut[std::abs(mid - 128) >> 2];
+            const int lim = d->limlut[std::abs(mid - 128) >> 2];
             int sum = 0, count = 0;
             for (int i = 0; i < u; i++) {
                 if (std::abs(order[i] - mid) <= lim) {
@@ -533,9 +516,9 @@ static void ExpandDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dst
                 order[u++] = dmskpn[x + 1];
             if (u < 5)
                 continue;
-            SortMetrics(order, u);
+            std::sort(order, order + u);
             const int mid = u & 1 ? order[u >> 1] : (order[(u - 1) >> 1] + order[u >> 1] + 1) >> 1;
-            const int lim = limlut[std::abs(mid - 128) >> 2];
+            const int lim = d->limlut[std::abs(mid - 128) >> 2];
             int sum = 0, count = 0;
             for (int i = 0; i < u; i++) {
                 if (std::abs(order[i] - mid) <= lim) {
@@ -590,9 +573,9 @@ static void ExpandDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *d
             }
             if (u < 5)
                 continue;
-            SortMetrics(order, u);
+            std::sort(order, order + u);
             const int mid = u & 1 ? order[u >> 1] : (order[(u - 1) >> 1] + order[u >> 1] + 1) >> 1;
-            const int lim = limlut[std::abs(mid - 128) >> 2];
+            const int lim = d->limlut[std::abs(mid - 128) >> 2];
             int sum = 0, count = 0;
             for (int i = 0; i < u; i++) {
                 if (std::abs(order[i] - mid) <= lim) {
@@ -680,7 +663,7 @@ static void FillGaps2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp,
                 maxb = minb = 20;
             const int thresh = std::max(std::max(std::max(std::abs(forward - 128), std::abs(back - 128)) >> 2, 8), std::max(std::abs(mint - maxt), std::abs(minb - maxb)));
             const int flim = std::min(std::max(std::abs(forward - 128), std::abs(back - 128)) >> 2, 6);
-            if (abs(forward - back) <= thresh && (v - u - 1 <= flim || tc || bc)) {
+            if (std::abs(forward - back) <= thresh && (v - u - 1 <= flim || tc || bc)) {
                 const double step = double(forward - back) / double(v - u);
                 for (int j = 0; j < v - u - 1; j++)
                     dstp[u + j + 1] = back + int(j * step + .5);
@@ -728,9 +711,9 @@ static void MarkDirections2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t 
             if (v < 3)
                 continue;
             else {
-                SortMetrics(order, v);
+                std::sort(order, order + v);
                 const int mid = v & 1 ? order[v >> 1] : (order[(v - 1) >> 1] + order[v >> 1] + 1) >> 1;
-                const int lim = limlut[std::abs(mid - 128) >> 2];
+                const int lim = d->limlut[std::abs(mid - 128) >> 2];
                 int u = 0;
                 if (std::abs(dmskp[x - 1] - dmskpn[x - 1]) <= lim || dmskp[x - 1] == 255 || dmskpn[x - 1] == 255)
                     u++;
@@ -774,7 +757,7 @@ static void InterpolateLattice(uint8_t *dmskp, uint8_t *dstp, const uint8_t *oms
     for (int y = 2 - d->field; y < height - 1; y += 2) {
         for (int x = 0; x < width; x++) {
             int dir = dmskp[x];
-            const int lim = limlut[std::abs(dir - 128) >> 2];
+            const int lim = d->limlut[std::abs(dir - 128) >> 2];
             if (dir == 255 || (std::abs(dmskp[x] - dmskp[x - 1]) > lim && std::abs(dmskp[x] - dmskp[x + 1]) > lim)) {
                 dstpn[x] = (dstp[x] + dstpnn[x] + 1) >> 1;
                 if (dir != 255)
@@ -880,7 +863,7 @@ static void PostProcess(const uint8_t *nmskp, const uint8_t *omskp, uint8_t *dst
     const uint8_t * srcpn = dstp + stride;
     for (int y = 2 - d->field; y < height - 1; y += 2) {
         for (int x = 0; x < width; x++) {
-            const int lim = limlut[std::abs(nmskp[x] - 128) >> 2];
+            const int lim = d->limlut[std::abs(nmskp[x] - 128) >> 2];
             if (std::abs(nmskp[x] - omskp[x]) > lim && omskp[x] != 255 && omskp[x] != 128)
                 dstp[x] = (srcpp[x] + srcpn[x] + 1) >> 1;
         }
@@ -932,9 +915,8 @@ static void GaussianBlur1(const uint8_t *srcp, uint8_t *tmpp, uint8_t *dstp, int
         tmpp[1] = (srcp[4] * 582 + srcp[3] * 7078 + (srcp[0] + srcp[2]) * 15862 + srcp[1] * 26152 + 32768) >> 16;
         tmpp[2] = (srcp[5] * 582 + (srcp[0] + srcp[4]) * 3539 + (srcp[1] + srcp[3]) * 15862 + srcp[2] * 26152 + 32768) >> 16;
         int x;
-        for (x = 3; x < width - 3; x++) {
+        for (x = 3; x < width - 3; x++)
             tmpp[x] = ((srcp[x - 3] + srcp[x + 3]) * 291 + (srcp[x - 2] + srcp[x + 2]) * 3539 + (srcp[x - 1] + srcp[x + 1]) * 15862 + srcp[x] * 26152 + 32768) >> 16;
-        }
         tmpp[x] = (srcp[x - 3] * 582 + (srcp[x - 2] + srcp[x + 2]) * 3539 + (srcp[x - 1] + srcp[x + 1]) * 15862 + srcp[x] * 26152 + 32768) >> 16;
         x++;
         tmpp[x] = (srcp[x - 3] * 582 + srcp[x - 2] * 7078 + (srcp[x - 1] + srcp[x + 1]) * 15862 + srcp[x] * 26152 + 32768) >> 16;
@@ -1028,9 +1010,8 @@ static void GaussianBlurSqrt2(const int *src, int *tmp, int *dst, int width, int
         dstp[x] = (srcp[x + 4] * 678 + srcp[x + 3] * 3902 + (srcp[x - 2] + srcp[x + 2]) * 6809 + (srcp[x - 1] + srcp[x + 1]) * 14415 + srcp[x] * 18508 + 32768) >> 16;
         x++;
         dstp[x] = (srcp[x + 4] * 678 + (srcp[x - 3] + srcp[x + 3]) * 1951 + (srcp[x - 2] + srcp[x + 2]) * 6809 + (srcp[x - 1] + srcp[x + 1]) * 14415 + srcp[x] * 18508 + 32768) >> 16;
-        for (x = 4; x < width - 4; x++) {
+        for (x = 4; x < width - 4; x++)
             dstp[x] = ((srcp[x - 4] + srcp[x + 4]) * 339 + (srcp[x - 3] + srcp[x + 3]) * 1951 + (srcp[x - 2] + srcp[x + 2]) * 6809 + (srcp[x - 1] + srcp[x + 1]) * 14415 + srcp[x] * 18508 + 32768) >> 16;
-        }
         dstp[x] = (srcp[x - 4] * 678 + (srcp[x - 3] + srcp[x + 3]) * 1951 + (srcp[x - 2] + srcp[x + 2]) * 6809 + (srcp[x - 1] + srcp[x + 1]) * 14415 + srcp[x] * 18508 + 32768) >> 16;
         x++;
         dstp[x] = (srcp[x - 4] * 678 + srcp[x - 3] * 3902 + (srcp[x - 2] + srcp[x + 2]) * 6809 + (srcp[x - 1] + srcp[x + 1]) * 14415 + srcp[x] * 18508 + 32768) >> 16;
@@ -1159,24 +1140,24 @@ static void CalcDerivatives(const uint8_t *srcp, int *x2, int *y2, int *xy, int 
     {
         const int Ix = srcp[1] - srcp[0];
         const int Iy = srcp[0] - srcpn[0];
-        x2[0] = (Ix*Ix) >> 1;
-        y2[0] = (Iy*Iy) >> 1;
-        xy[0] = (Ix*Iy) >> 1;
+        x2[0] = (Ix * Ix) >> 1;
+        y2[0] = (Iy * Iy) >> 1;
+        xy[0] = (Ix * Iy) >> 1;
     }
     int x;
     for (x = 1; x < width - 1; x++) {
         const int Ix = srcp[x + 1] - srcp[x - 1];
         const int Iy = srcp[x] - srcpn[x];
-        x2[x] = (Ix*Ix) >> 1;
-        y2[x] = (Iy*Iy) >> 1;
-        xy[x] = (Ix*Iy) >> 1;
+        x2[x] = (Ix * Ix) >> 1;
+        y2[x] = (Iy * Iy) >> 1;
+        xy[x] = (Ix * Iy) >> 1;
     }
     {
         const int Ix = srcp[x] - srcp[x - 1];
         const int Iy = srcp[x] - srcpn[x];
-        x2[x] = (Ix*Ix) >> 1;
-        y2[x] = (Iy*Iy) >> 1;
-        xy[x] = (Ix*Iy) >> 1;
+        x2[x] = (Ix * Ix) >> 1;
+        y2[x] = (Iy * Iy) >> 1;
+        xy[x] = (Ix * Iy) >> 1;
     }
     srcpp += stride;
     srcp += stride;
@@ -1189,23 +1170,23 @@ static void CalcDerivatives(const uint8_t *srcp, int *x2, int *y2, int *xy, int 
         {
             const int Ix = srcp[1] - srcp[0];
             const int Iy = srcpp[0] - srcpn[0];
-            x2[0] = (Ix*Ix) >> 1;
-            y2[0] = (Iy*Iy) >> 1;
-            xy[0] = (Ix*Iy) >> 1;
+            x2[0] = (Ix * Ix) >> 1;
+            y2[0] = (Iy * Iy) >> 1;
+            xy[0] = (Ix * Iy) >> 1;
         }
         for (x = 1; x < width - 1; x++) {
             const int Ix = srcp[x + 1] - srcp[x - 1];
             const int Iy = srcpp[x] - srcpn[x];
-            x2[x] = (Ix*Ix) >> 1;
-            y2[x] = (Iy*Iy) >> 1;
-            xy[x] = (Ix*Iy) >> 1;
+            x2[x] = (Ix * Ix) >> 1;
+            y2[x] = (Iy * Iy) >> 1;
+            xy[x] = (Ix * Iy) >> 1;
         }
         {
             const int Ix = srcp[x] - srcp[x - 1];
             const int Iy = srcpp[x] - srcpn[x];
-            x2[x] = (Ix*Ix) >> 1;
-            y2[x] = (Iy*Iy) >> 1;
-            xy[x] = (Ix*Iy) >> 1;
+            x2[x] = (Ix * Ix) >> 1;
+            y2[x] = (Iy * Iy) >> 1;
+            xy[x] = (Ix * Iy) >> 1;
         }
         srcpp += stride;
         srcp += stride;
@@ -1217,23 +1198,23 @@ static void CalcDerivatives(const uint8_t *srcp, int *x2, int *y2, int *xy, int 
     {
         const int Ix = srcp[1] - srcp[0];
         const int Iy = srcpp[0] - srcp[0];
-        x2[0] = (Ix*Ix) >> 1;
-        y2[0] = (Iy*Iy) >> 1;
-        xy[0] = (Ix*Iy) >> 1;
+        x2[0] = (Ix * Ix) >> 1;
+        y2[0] = (Iy * Iy) >> 1;
+        xy[0] = (Ix * Iy) >> 1;
     }
     for (x = 1; x < width - 1; x++) {
         const int Ix = srcp[x + 1] - srcp[x - 1];
         const int Iy = srcpp[x] - srcp[x];
-        x2[x] = (Ix*Ix) >> 1;
-        y2[x] = (Iy*Iy) >> 1;
-        xy[x] = (Ix*Iy) >> 1;
+        x2[x] = (Ix * Ix) >> 1;
+        y2[x] = (Iy * Iy) >> 1;
+        xy[x] = (Ix * Iy) >> 1;
     }
     {
         const int Ix = srcp[x] - srcp[x - 1];
         const int Iy = srcpp[x] - srcp[x];
-        x2[x] = (Ix*Ix) >> 1;
-        y2[x] = (Iy*Iy) >> 1;
-        xy[x] = (Ix*Iy) >> 1;
+        x2[x] = (Ix * Ix) >> 1;
+        y2[x] = (Iy * Iy) >> 1;
+        xy[x] = (Ix * Iy) >> 1;
     }
 }
 
@@ -1428,31 +1409,22 @@ static void VS_CC eedi2Create(const VSMap *in, VSMap *out, void *userData, VSCor
             const int alignment = 32;
             const int stride = (width * d.vi->format->bytesPerSample + (alignment - 1)) & ~(alignment - 1);
             d.cx2 = vs_aligned_malloc<int>(height * stride * sizeof(int), 32);
-            if (!d.cx2) {
-                vsapi->setError(out, "EEDI2: malloc failure (cx2)");
-                vsapi->freeNode(d.node);
-                return;
-            }
             d.cy2 = vs_aligned_malloc<int>(height * stride * sizeof(int), 32);
-            if (!d.cy2) {
-                vsapi->setError(out, "EEDI2: malloc failure (cy2)");
-                vsapi->freeNode(d.node);
-                return;
-            }
             d.cxy = vs_aligned_malloc<int>(height * stride * sizeof(int), 32);
-            if (!d.cxy) {
-                vsapi->setError(out, "EEDI2: malloc failure (cxy)");
-                vsapi->freeNode(d.node);
-                return;
-            }
             d.tmpc = vs_aligned_malloc<int>(height * stride * sizeof(int), 32);
-            if (!d.tmpc) {
-                vsapi->setError(out, "EEDI2: malloc failure (tmpc)");
+            if (!d.cx2 || !d.cy2 || !d.cxy || !d.tmpc) {
+                vsapi->setError(out, "EEDI2: malloc failure (pp>1)");
                 vsapi->freeNode(d.node);
                 return;
             }
         }
     }
+    d.limlut = {
+        6, 6, 7, 7, 8, 8, 9, 9, 9, 10,
+        10, 11, 11, 12, 12, 12, 12, 12, 12, 12,
+        12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+        12, -1, -1
+    };
 
     data = new EEDI2Data;
     *data = d;
