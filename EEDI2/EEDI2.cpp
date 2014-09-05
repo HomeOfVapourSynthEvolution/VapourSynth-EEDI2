@@ -36,7 +36,6 @@ struct EEDI2Data {
     VSVideoInfo vi2;
     int field, mthresh, lthresh, vthresh, estr, dstr, maxd, map, nt, pp;
     int fieldS;
-    int * cx2, * cy2, * cxy, * tmpc;
     std::vector<int> limlut;
 };
 
@@ -1238,6 +1237,19 @@ static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void *
         VSFrameRef * tmp2 = vsapi->newVideoFrame(d->vi2.format, d->vi2.width, d->vi2.height, src, core);
         VSFrameRef * tmp2_2 = vsapi->newVideoFrame(d->vi2.format, d->vi2.width, d->vi2.height, src, core);
         VSFrameRef * msk2 = vsapi->newVideoFrame(d->vi2.format, d->vi2.width, d->vi2.height, src, core);
+        int * cx2 = nullptr, * cy2 = nullptr, * cxy = nullptr, * tmpc = nullptr;
+        if (d->pp > 1 && d->map == 0) {
+            const int alignment = 32;
+            const int stride = (d->vi->width * d->vi->format->bytesPerSample + (alignment - 1)) & ~(alignment - 1);
+            cx2 = vs_aligned_malloc<int>(d->vi->height * stride * sizeof(int), 32);
+            cy2 = vs_aligned_malloc<int>(d->vi->height * stride * sizeof(int), 32);
+            cxy = vs_aligned_malloc<int>(d->vi->height * stride * sizeof(int), 32);
+            tmpc = vs_aligned_malloc<int>(d->vi->height * stride * sizeof(int), 32);
+            if (!cx2 || !cy2 || !cxy || !tmpc) {
+                vsapi->setFilterError("EEDI2: malloc failure (pp>1)", frameCtx);
+                return nullptr;
+            }
+        }
         if (d->fieldS > 1)
             d->field = n & 1 ? (d->fieldS == 2 ? 1 : 0) : (d->fieldS == 2 ? 0 : 1);
 
@@ -1280,27 +1292,29 @@ static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void *
                 if (d->map == 3)
                     continue;
                 InterpolateLattice(tmp2p, dst2p, tmp2_2p, width, height2, stride, plane, d);
-                if (d->pp) {
-                    if (d->pp == 1 || d->pp == 3) {
-                        vsapi->freeFrame(tmp2_2);
-                        tmp2_2 = vsapi->copyFrame(tmp2, core);
-                        tmp2_2p = vsapi->getWritePtr(tmp2_2, plane);
-                        FilterDirMap2X(msk2p, tmp2p, dst2Mp, width, height2, stride, d);
-                        ExpandDirMap2X(msk2p, dst2Mp, tmp2p, width, height2, stride, d);
-                        PostProcess(tmp2p, tmp2_2p, dst2p, width, height2, stride, d);
-                    }
-                    if (d->pp == 2 || d->pp == 3) {
-                        GaussianBlur1(srcp, tmpp, dstp, width, height, stride);
-                        CalcDerivatives(dstp, d->cx2, d->cy2, d->cxy, width, height, stride);
-                        GaussianBlurSqrt2(d->cx2, d->tmpc, d->cx2, width, height, stride);
-                        GaussianBlurSqrt2(d->cy2, d->tmpc, d->cy2, width, height, stride);
-                        GaussianBlurSqrt2(d->cxy, d->tmpc, d->cxy, width, height, stride);
-                        PostProcessCorner(tmp2_2p, dst2p, d->cx2, d->cy2, d->cxy, width, height2, stride, d);
-                    }
+                if (d->pp == 1 || d->pp == 3) {
+                    vsapi->freeFrame(tmp2_2);
+                    tmp2_2 = vsapi->copyFrame(tmp2, core);
+                    tmp2_2p = vsapi->getWritePtr(tmp2_2, plane);
+                    FilterDirMap2X(msk2p, tmp2p, dst2Mp, width, height2, stride, d);
+                    ExpandDirMap2X(msk2p, dst2Mp, tmp2p, width, height2, stride, d);
+                    PostProcess(tmp2p, tmp2_2p, dst2p, width, height2, stride, d);
+                }
+                if (d->pp == 2 || d->pp == 3) {
+                    GaussianBlur1(srcp, tmpp, dstp, width, height, stride);
+                    CalcDerivatives(dstp, cx2, cy2, cxy, width, height, stride);
+                    GaussianBlurSqrt2(cx2, tmpc, cx2, width, height, stride);
+                    GaussianBlurSqrt2(cy2, tmpc, cy2, width, height, stride);
+                    GaussianBlurSqrt2(cxy, tmpc, cxy, width, height, stride);
+                    PostProcessCorner(tmp2_2p, dst2p, cx2, cy2, cxy, width, height2, stride, d);
                 }
             }
         }
 
+        vs_aligned_free(cx2);
+        vs_aligned_free(cy2);
+        vs_aligned_free(cxy);
+        vs_aligned_free(tmpc);
         if (d->map == 0) {
             vsapi->freeFrame(dst);
             dst = vsapi->copyFrame(dst2, core);
@@ -1328,12 +1342,6 @@ static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void *
 static void VS_CC eedi2Free(void *instanceData, VSCore *core, const VSAPI *vsapi) {
     EEDI2Data * d = (EEDI2Data *)instanceData;
     vsapi->freeNode(d->node);
-    if (d->pp > 1 && d->map == 0) {
-        vs_aligned_free(d->cx2);
-        vs_aligned_free(d->cy2);
-        vs_aligned_free(d->cxy);
-        vs_aligned_free(d->tmpc);
-    }
     delete d;
 }
 
@@ -1401,24 +1409,10 @@ static void VS_CC eedi2Create(const VSMap *in, VSMap *out, void *userData, VSCor
         d.field = 0;
     else if (d.fieldS == 3)
         d.field = 1;
-    if (d.map == 0 || d.map == 3) {
+    if (d.map == 0 || d.map == 3)
         d.vi2.height *= 2;
-        if (d.pp > 1 && d.map == 0) {
-            const int height = d.vi->height;
-            const int width = d.vi->width;
-            const int alignment = 32;
-            const int stride = (width * d.vi->format->bytesPerSample + (alignment - 1)) & ~(alignment - 1);
-            d.cx2 = vs_aligned_malloc<int>(height * stride * sizeof(int), 32);
-            d.cy2 = vs_aligned_malloc<int>(height * stride * sizeof(int), 32);
-            d.cxy = vs_aligned_malloc<int>(height * stride * sizeof(int), 32);
-            d.tmpc = vs_aligned_malloc<int>(height * stride * sizeof(int), 32);
-            if (!d.cx2 || !d.cy2 || !d.cxy || !d.tmpc) {
-                vsapi->setError(out, "EEDI2: malloc failure (pp>1)");
-                vsapi->freeNode(d.node);
-                return;
-            }
-        }
-    }
+    d.mthresh *= d.mthresh;
+    d.vthresh *= 81;
     d.limlut = {
         6, 6, 7, 7, 8, 8, 9, 9, 9, 10,
         10, 11, 11, 12, 12, 12, 12, 12, 12, 12,
