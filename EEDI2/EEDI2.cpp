@@ -40,7 +40,7 @@ struct EEDI2Data {
 };
 
 static void BuildEdgeMask(uint8_t *dstp, const uint8_t *srcp, int width, int height, int stride, const EEDI2Data *d) {
-    memset(dstp, 0, height * stride);
+    memset(dstp, 0, stride * height);
     dstp += stride;
     srcp += stride;
     const uint8_t * srcpp = srcp - stride;
@@ -78,7 +78,7 @@ static void BuildEdgeMask(uint8_t *dstp, const uint8_t *srcp, int width, int hei
 }
 
 static void Dilate(const uint8_t *mskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, mskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, mskp, stride * height);
     mskp += stride;
     dstp += stride;
     const uint8_t * mskpp = mskp - stride;
@@ -115,7 +115,7 @@ static void Dilate(const uint8_t *mskp, uint8_t *dstp, int width, int height, in
 }
 
 static void Erode(const uint8_t *mskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, mskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, mskp, stride * height);
     mskp += stride;
     dstp += stride;
     const uint8_t * mskpp = mskp - stride;
@@ -152,7 +152,7 @@ static void Erode(const uint8_t *mskp, uint8_t *dstp, int width, int height, int
 }
 
 static void RemoveSmallHorzGaps(const uint8_t *mskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, mskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, mskp, stride * height);
     mskp += stride;
     dstp += stride;
     for (int y = 1; y < height - 1; y++) {
@@ -184,7 +184,7 @@ static void RemoveSmallHorzGaps(const uint8_t *mskp, uint8_t *dstp, int width, i
 }
 
 static void CalcDirections(const uint8_t *mskp, const uint8_t *srcp, uint8_t *dstp, int width, int height, int stride, int plane, const EEDI2Data *d) {
-    memset(dstp, 255, height * stride);
+    memset(dstp, 255, stride * height);
     mskp += stride;
     srcp += stride;
     dstp += stride;
@@ -295,7 +295,7 @@ static void CalcDirections(const uint8_t *mskp, const uint8_t *srcp, uint8_t *ds
 }
 
 static void FilterMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, dmskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, dmskp, stride * height);
     mskp += stride;
     dmskp += stride;
     dstp += stride;
@@ -364,7 +364,7 @@ static void FilterMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, 
 }
 
 static void FilterDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, dmskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, dmskp, stride * height);
     mskp += stride;
     dmskp += stride;
     dstp += stride;
@@ -422,7 +422,7 @@ static void FilterDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dst
 }
 
 static void FilterDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, dmskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, dmskp, stride * height);
     mskp += stride * (1 - d->field);
     dmskp += stride * (2 - d->field);
     dstp += stride * (2 - d->field);
@@ -486,7 +486,7 @@ static void FilterDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *d
 }
 
 static void ExpandDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, dmskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, dmskp, stride * height);
     mskp += stride;
     dmskp += stride;
     dstp += stride;
@@ -538,7 +538,7 @@ static void ExpandDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dst
 }
 
 static void ExpandDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, dmskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, dmskp, stride * height);
     mskp += stride * (1 - d->field);
     dmskp += stride * (2 - d->field);
     dstp += stride * (2 - d->field);
@@ -596,7 +596,7 @@ static void ExpandDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *d
 }
 
 static void FillGaps2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    vs_bitblt(dstp, stride, dmskp, stride, width * d->vi->format->bytesPerSample, height);
+    memcpy(dstp, dmskp, stride * height);
     mskp += stride * (1 - d->field);
     dmskp += stride * (2 - d->field);
     dstp += stride * (2 - d->field);
@@ -684,7 +684,7 @@ static inline void UpscaleBy2(const uint8_t *srcp, uint8_t *dstp, int width, int
 }
 
 static void MarkDirections2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
-    memset(dstp, 255, height * stride);
+    memset(dstp, 255, stride * height);
     mskp += stride * (1 - d->field);
     dmskp += stride * (1 - d->field);
     dstp += stride * (2 - d->field);
@@ -744,9 +744,9 @@ static void MarkDirections2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t 
 
 static void InterpolateLattice(uint8_t *dmskp, uint8_t *dstp, const uint8_t *omskp, int width, int height, int stride, int plane, const EEDI2Data *d) {
     if (d->field == 1)
-        vs_bitblt(dstp + stride * (height - 1), stride, dstp + stride * (height - 2), stride, width * d->vi->format->bytesPerSample, 1);
+        memcpy(dstp + stride * (height - 1), dstp + stride * (height - 2), stride);
     else
-        vs_bitblt(dstp, stride, dstp + stride, stride, width * d->vi->format->bytesPerSample, 1);
+        memcpy(dstp, dstp + stride, stride);
     dmskp += stride * (2 - d->field);
     dstp += stride * (1 - d->field);
     omskp += stride * (1 - d->field);
@@ -1241,10 +1241,10 @@ static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void *
         if (d->pp > 1 && d->map == 0) {
             const int alignment = 32;
             const int stride = (d->vi->width * d->vi->format->bytesPerSample + (alignment - 1)) & ~(alignment - 1);
-            cx2 = vs_aligned_malloc<int>(d->vi->height * stride * sizeof(int), 32);
-            cy2 = vs_aligned_malloc<int>(d->vi->height * stride * sizeof(int), 32);
-            cxy = vs_aligned_malloc<int>(d->vi->height * stride * sizeof(int), 32);
-            tmpc = vs_aligned_malloc<int>(d->vi->height * stride * sizeof(int), 32);
+            cx2 = vs_aligned_malloc<int>(stride * d->vi->height * sizeof(int), 32);
+            cy2 = vs_aligned_malloc<int>(stride * d->vi->height * sizeof(int), 32);
+            cxy = vs_aligned_malloc<int>(stride * d->vi->height * sizeof(int), 32);
+            tmpc = vs_aligned_malloc<int>(stride * d->vi->height * sizeof(int), 32);
             if (!cx2 || !cy2 || !cxy || !tmpc) {
                 vsapi->setFilterError("EEDI2: malloc failure (pp>1)", frameCtx);
                 return nullptr;
