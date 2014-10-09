@@ -39,7 +39,7 @@ struct EEDI2Data {
     std::vector<int> limlut;
 };
 
-static void BuildEdgeMask(uint8_t *dstp, const uint8_t *srcp, int width, int height, int stride, const EEDI2Data *d) {
+static void buildEdgeMask(const uint8_t * VS_RESTRICT srcp, uint8_t * VS_RESTRICT dstp, const int width, const int height, const int stride, const EEDI2Data * d) {
     memset(dstp, 0, stride * height);
     dstp += stride;
     srcp += stride;
@@ -77,7 +77,7 @@ static void BuildEdgeMask(uint8_t *dstp, const uint8_t *srcp, int width, int hei
     }
 }
 
-static void Dilate(const uint8_t *mskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void dilate(const uint8_t * VS_RESTRICT mskp, uint8_t * VS_RESTRICT dstp, const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, mskp, stride * height);
     mskp += stride;
     dstp += stride;
@@ -114,7 +114,7 @@ static void Dilate(const uint8_t *mskp, uint8_t *dstp, int width, int height, in
     }
 }
 
-static void Erode(const uint8_t *mskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void erode(const uint8_t * VS_RESTRICT mskp, uint8_t * VS_RESTRICT dstp, const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, mskp, stride * height);
     mskp += stride;
     dstp += stride;
@@ -151,7 +151,7 @@ static void Erode(const uint8_t *mskp, uint8_t *dstp, int width, int height, int
     }
 }
 
-static void RemoveSmallHorzGaps(const uint8_t *mskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void removeSmallHorzGaps(const uint8_t * VS_RESTRICT mskp, uint8_t * VS_RESTRICT dstp, const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, mskp, stride * height);
     mskp += stride;
     dstp += stride;
@@ -183,7 +183,8 @@ static void RemoveSmallHorzGaps(const uint8_t *mskp, uint8_t *dstp, int width, i
     }
 }
 
-static void CalcDirections(const uint8_t *mskp, const uint8_t *srcp, uint8_t *dstp, int width, int height, int stride, int plane, const EEDI2Data *d) {
+static void calcDirections(const uint8_t * VS_RESTRICT mskp, const uint8_t * VS_RESTRICT srcp, uint8_t * VS_RESTRICT dstp,
+                           const int width, const int height, const int stride, const int plane, const EEDI2Data * d) {
     memset(dstp, 255, stride * height);
     mskp += stride;
     srcp += stride;
@@ -294,7 +295,8 @@ static void CalcDirections(const uint8_t *mskp, const uint8_t *srcp, uint8_t *ds
     }
 }
 
-static void FilterMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void filterMap(const uint8_t * VS_RESTRICT mskp, const uint8_t * VS_RESTRICT dmskp, uint8_t * VS_RESTRICT dstp,
+                      const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, dmskp, stride * height);
     mskp += stride;
     dmskp += stride;
@@ -363,7 +365,8 @@ static void FilterMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, 
     }
 }
 
-static void FilterDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void filterDirMap(const uint8_t * VS_RESTRICT mskp, const uint8_t * VS_RESTRICT dmskp, uint8_t * VS_RESTRICT dstp,
+                         const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, dmskp, stride * height);
     mskp += stride;
     dmskp += stride;
@@ -421,7 +424,8 @@ static void FilterDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dst
     }
 }
 
-static void FilterDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void filterDirMap2X(const uint8_t * VS_RESTRICT mskp, const uint8_t * VS_RESTRICT dmskp, uint8_t * VS_RESTRICT dstp,
+                           const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, dmskp, stride * height);
     mskp += stride * (1 - d->field);
     dmskp += stride * (2 - d->field);
@@ -485,7 +489,8 @@ static void FilterDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *d
     }
 }
 
-static void ExpandDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void expandDirMap(const uint8_t * VS_RESTRICT mskp, const uint8_t * VS_RESTRICT dmskp, uint8_t * VS_RESTRICT dstp,
+                         const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, dmskp, stride * height);
     mskp += stride;
     dmskp += stride;
@@ -537,7 +542,8 @@ static void ExpandDirMap(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dst
     }
 }
 
-static void ExpandDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void expandDirMap2X(const uint8_t * VS_RESTRICT mskp, const uint8_t * VS_RESTRICT dmskp, uint8_t * VS_RESTRICT dstp,
+                           const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, dmskp, stride * height);
     mskp += stride * (1 - d->field);
     dmskp += stride * (2 - d->field);
@@ -595,7 +601,8 @@ static void ExpandDirMap2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *d
     }
 }
 
-static void FillGaps2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void fillGaps2X(const uint8_t * VS_RESTRICT mskp, const uint8_t * VS_RESTRICT dmskp, uint8_t * VS_RESTRICT dstp,
+                       const int width, const int height, const int stride, const EEDI2Data * d) {
     memcpy(dstp, dmskp, stride * height);
     mskp += stride * (1 - d->field);
     dmskp += stride * (2 - d->field);
@@ -679,11 +686,12 @@ static void FillGaps2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp,
     }
 }
 
-static inline void UpscaleBy2(const uint8_t *srcp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static inline void upscaleBy2(const uint8_t * VS_RESTRICT srcp, uint8_t * VS_RESTRICT dstp, const int width, const int height, const int stride, const EEDI2Data * d) {
     vs_bitblt(dstp + stride * (1 - d->field), stride * 2, srcp, stride, width * d->vi->format->bytesPerSample, height);
 }
 
-static void MarkDirections2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void markDirections2X(const uint8_t * VS_RESTRICT mskp, const uint8_t * VS_RESTRICT dmskp, uint8_t * VS_RESTRICT dstp,
+                             const int width, const int height, const int stride, const EEDI2Data * d) {
     memset(dstp, 255, stride * height);
     mskp += stride * (1 - d->field);
     dmskp += stride * (1 - d->field);
@@ -742,7 +750,8 @@ static void MarkDirections2X(const uint8_t *mskp, const uint8_t *dmskp, uint8_t 
     }
 }
 
-static void InterpolateLattice(uint8_t *dmskp, uint8_t *dstp, const uint8_t *omskp, int width, int height, int stride, int plane, const EEDI2Data *d) {
+static void interpolateLattice(const uint8_t * VS_RESTRICT omskp, uint8_t * VS_RESTRICT dmskp, uint8_t * VS_RESTRICT dstp,
+                               const int width, const int height, const int stride, const int plane, const EEDI2Data * d) {
     if (d->field == 1)
         memcpy(dstp + stride * (height - 1), dstp + stride * (height - 2), stride);
     else
@@ -854,7 +863,8 @@ static void InterpolateLattice(uint8_t *dmskp, uint8_t *dstp, const uint8_t *oms
     }
 }
 
-static void PostProcess(const uint8_t *nmskp, const uint8_t *omskp, uint8_t *dstp, int width, int height, int stride, const EEDI2Data *d) {
+static void postProcess(const uint8_t * VS_RESTRICT nmskp, const uint8_t * VS_RESTRICT omskp, uint8_t * VS_RESTRICT dstp,
+                        const int width, const int height, const int stride, const EEDI2Data * d) {
     nmskp += stride * (2 - d->field);
     omskp += stride * (2 - d->field);
     dstp += stride * (2 - d->field);
@@ -874,7 +884,8 @@ static void PostProcess(const uint8_t *nmskp, const uint8_t *omskp, uint8_t *dst
     }
 }
 
-static void PostProcessCorner(const uint8_t *mskp, uint8_t *dstp, const int *x2, const int *y2, const int *xy, int width, int height, int stride, const EEDI2Data *d) {
+static void postProcessCorner(const uint8_t * VS_RESTRICT mskp, uint8_t * VS_RESTRICT dstp, const int * VS_RESTRICT x2, const int * VS_RESTRICT y2, const int * VS_RESTRICT xy,
+                              const int width, const int height, const int stride, const EEDI2Data * d) {
     mskp += stride * (8 - d->field);
     dstp += stride * (8 - d->field);
     x2 += stride * 3;
@@ -907,7 +918,7 @@ static void PostProcessCorner(const uint8_t *mskp, uint8_t *dstp, const int *x2,
     }
 }
 
-static void GaussianBlur1(const uint8_t *srcp, uint8_t *tmpp, uint8_t *dstp, int width, int height, int stride) {
+static void gaussianBlur1(const uint8_t * VS_RESTRICT srcp, uint8_t * VS_RESTRICT tmpp, uint8_t * VS_RESTRICT dstp, const int width, const int height, const int stride) {
     const uint8_t * const tmp = tmpp;
     for (int y = 0; y < height; y++) {
         tmpp[0] = (srcp[3] * 582 + srcp[2] * 7078 + srcp[1] * 31724 + srcp[0] * 26152 + 32768) >> 16;
@@ -997,7 +1008,7 @@ static void GaussianBlur1(const uint8_t *srcp, uint8_t *tmpp, uint8_t *dstp, int
         dstp[x] = (src3p[x] * 582 + src2p[x] * 7078 + srcpp[x] * 31724 + srcp[x] * 26152 + 32768) >> 16;
 }
 
-static void GaussianBlurSqrt2(const int *src, int *tmp, int *dst, int width, int height, int stride) {
+static void gaussianBlurSqrt2(const int * VS_RESTRICT src, int * VS_RESTRICT tmp, int * VS_RESTRICT dst, const int width, const int height, const int stride) {
     const int * srcp = src;
     int * dstp = tmp;
     for (int y = 0; y < height; y++) {
@@ -1133,7 +1144,7 @@ static void GaussianBlurSqrt2(const int *src, int *tmp, int *dst, int width, int
         dstp[x] = (src4p[x] * 678 + src3p[x] * 3902 + src2p[x] * 13618 + srcpp[x] * 28830 + srcp[x] * 18508 + 32768) >> 18;
 }
 
-static void CalcDerivatives(const uint8_t *srcp, int *x2, int *y2, int *xy, int width, int height, int stride) {
+static void calcDerivatives(const uint8_t * VS_RESTRICT srcp, int * VS_RESTRICT x2, int * VS_RESTRICT y2, int * VS_RESTRICT xy, const int width, const int height, const int stride) {
     const uint8_t * srcpp = srcp - stride;
     const uint8_t * srcpn = srcp + stride;
     {
@@ -1268,45 +1279,45 @@ static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void *
             uint8_t * tmp2_2p = vsapi->getWritePtr(tmp2_2, plane);
             uint8_t * msk2p = vsapi->getWritePtr(msk2, plane);
 
-            BuildEdgeMask(mskp, srcp, width, height, stride, d);
-            Erode(mskp, tmpp, width, height, stride, d);
-            Dilate(tmpp, mskp, width, height, stride, d);
-            Erode(mskp, tmpp, width, height, stride, d);
-            RemoveSmallHorzGaps(tmpp, mskp, width, height, stride, d);
+            buildEdgeMask(srcp, mskp, width, height, stride, d);
+            erode(mskp, tmpp, width, height, stride, d);
+            dilate(tmpp, mskp, width, height, stride, d);
+            erode(mskp, tmpp, width, height, stride, d);
+            removeSmallHorzGaps(tmpp, mskp, width, height, stride, d);
             if (d->map != 1) {
-                CalcDirections(mskp, srcp, tmpp, width, height, stride, plane, d);
-                FilterDirMap(mskp, tmpp, dstp, width, height, stride, d);
-                ExpandDirMap(mskp, dstp, tmpp, width, height, stride, d);
-                FilterMap(mskp, tmpp, dstp, width, height, stride, d);
+                calcDirections(mskp, srcp, tmpp, width, height, stride, plane, d);
+                filterDirMap(mskp, tmpp, dstp, width, height, stride, d);
+                expandDirMap(mskp, dstp, tmpp, width, height, stride, d);
+                filterMap(mskp, tmpp, dstp, width, height, stride, d);
                 if (d->map == 2)
                     continue;
-                memset(dst2p, 0, height2 * stride);
-                UpscaleBy2(srcp, dst2p, width, height, stride, d);
-                UpscaleBy2(dstp, tmp2_2p, width, height, stride, d);
-                UpscaleBy2(mskp, msk2p, width, height, stride, d);
-                MarkDirections2X(msk2p, tmp2_2p, tmp2p, width, height2, stride, d);
-                FilterDirMap2X(msk2p, tmp2p, dst2Mp, width, height2, stride, d);
-                ExpandDirMap2X(msk2p, dst2Mp, tmp2p, width, height2, stride, d);
-                FillGaps2X(msk2p, tmp2p, dst2Mp, width, height2, stride, d);
-                FillGaps2X(msk2p, dst2Mp, tmp2p, width, height2, stride, d);
+                memset(dst2p, 0, stride * height2);
+                upscaleBy2(srcp, dst2p, width, height, stride, d);
+                upscaleBy2(dstp, tmp2_2p, width, height, stride, d);
+                upscaleBy2(mskp, msk2p, width, height, stride, d);
+                markDirections2X(msk2p, tmp2_2p, tmp2p, width, height2, stride, d);
+                filterDirMap2X(msk2p, tmp2p, dst2Mp, width, height2, stride, d);
+                expandDirMap2X(msk2p, dst2Mp, tmp2p, width, height2, stride, d);
+                fillGaps2X(msk2p, tmp2p, dst2Mp, width, height2, stride, d);
+                fillGaps2X(msk2p, dst2Mp, tmp2p, width, height2, stride, d);
                 if (d->map == 3)
                     continue;
-                InterpolateLattice(tmp2p, dst2p, tmp2_2p, width, height2, stride, plane, d);
+                interpolateLattice(tmp2_2p, tmp2p, dst2p, width, height2, stride, plane, d);
                 if (d->pp == 1 || d->pp == 3) {
                     vsapi->freeFrame(tmp2_2);
                     tmp2_2 = vsapi->copyFrame(tmp2, core);
                     tmp2_2p = vsapi->getWritePtr(tmp2_2, plane);
-                    FilterDirMap2X(msk2p, tmp2p, dst2Mp, width, height2, stride, d);
-                    ExpandDirMap2X(msk2p, dst2Mp, tmp2p, width, height2, stride, d);
-                    PostProcess(tmp2p, tmp2_2p, dst2p, width, height2, stride, d);
+                    filterDirMap2X(msk2p, tmp2p, dst2Mp, width, height2, stride, d);
+                    expandDirMap2X(msk2p, dst2Mp, tmp2p, width, height2, stride, d);
+                    postProcess(tmp2p, tmp2_2p, dst2p, width, height2, stride, d);
                 }
                 if (d->pp == 2 || d->pp == 3) {
-                    GaussianBlur1(srcp, tmpp, dstp, width, height, stride);
-                    CalcDerivatives(dstp, cx2, cy2, cxy, width, height, stride);
-                    GaussianBlurSqrt2(cx2, tmpc, cx2, width, height, stride);
-                    GaussianBlurSqrt2(cy2, tmpc, cy2, width, height, stride);
-                    GaussianBlurSqrt2(cxy, tmpc, cxy, width, height, stride);
-                    PostProcessCorner(tmp2_2p, dst2p, cx2, cy2, cxy, width, height2, stride, d);
+                    gaussianBlur1(srcp, tmpp, dstp, width, height, stride);
+                    calcDerivatives(dstp, cx2, cy2, cxy, width, height, stride);
+                    gaussianBlurSqrt2(cx2, tmpc, cx2, width, height, stride);
+                    gaussianBlurSqrt2(cy2, tmpc, cy2, width, height, stride);
+                    gaussianBlurSqrt2(cxy, tmpc, cxy, width, height, stride);
+                    postProcessCorner(tmp2_2p, dst2p, cx2, cy2, cxy, width, height2, stride, d);
                 }
             }
         }
@@ -1347,7 +1358,6 @@ static void VS_CC eedi2Free(void *instanceData, VSCore *core, const VSAPI *vsapi
 
 static void VS_CC eedi2Create(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
     EEDI2Data d;
-    EEDI2Data * data;
     int err;
 
     d.field = int64ToIntS(vsapi->propGetInt(in, "field", 0, nullptr));
@@ -1420,8 +1430,7 @@ static void VS_CC eedi2Create(const VSMap *in, VSMap *out, void *userData, VSCor
         12, -1, -1
     };
 
-    data = new EEDI2Data;
-    *data = d;
+    EEDI2Data * data = new EEDI2Data(d);
 
     vsapi->createFilter(in, out, "EEDI2", eedi2Init, eedi2GetFrame, eedi2Free, fmParallel, 0, data, core);
 }
