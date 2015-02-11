@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------------
-#  Makefile for VapourSynth-EEDI2, modified based on d2vsource/GNUmakefile
+#  Makefile for VapourSynth-EEDI2
 #----------------------------------------------------------------------------
 
 include config.mak
