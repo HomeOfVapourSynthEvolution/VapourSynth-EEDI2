@@ -26,7 +26,6 @@
 */
 
 #include <algorithm>
-#include <vector>
 #include <vapoursynth/VapourSynth.h>
 #include <vapoursynth/VSHelper.h>
 
@@ -1294,7 +1293,7 @@ static void calcDerivatives(const VSFrameRef * src, int * VS_RESTRICT x2, int * 
 
 template<typename T>
 static void EEDI2(const VSFrameRef * src, VSFrameRef * dst, VSFrameRef * msk, VSFrameRef * tmp,
-                  VSFrameRef * dst2, VSFrameRef * dst2M, VSFrameRef * tmp2, VSFrameRef * tmp2_2, VSFrameRef * msk2,
+                  VSFrameRef * dst2, VSFrameRef * dst2M, VSFrameRef * tmp2, VSFrameRef ** tmp2_2, VSFrameRef * msk2,
                   int * VS_RESTRICT cx2, int * VS_RESTRICT cy2, int * VS_RESTRICT cxy, int * VS_RESTRICT tmpc, const int field, const EEDI2Data * d, VSCore * core, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi->format->numPlanes; plane++) {
         buildEdgeMask<T>(src, msk, plane, d, vsapi);
@@ -1311,22 +1310,22 @@ static void EEDI2(const VSFrameRef * src, VSFrameRef * dst, VSFrameRef * msk, VS
                 continue;
             memset(vsapi->getWritePtr(dst2, plane), 0, vsapi->getStride(dst2, plane) * vsapi->getFrameHeight(dst2, plane));
             upscaleBy2(src, dst2, plane, field, d, vsapi);
-            upscaleBy2(dst, tmp2_2, plane, field, d, vsapi);
+            upscaleBy2(dst, *tmp2_2, plane, field, d, vsapi);
             upscaleBy2(msk, msk2, plane, field, d, vsapi);
-            markDirections2X<T>(msk2, tmp2_2, tmp2, plane, field, d, vsapi);
+            markDirections2X<T>(msk2, *tmp2_2, tmp2, plane, field, d, vsapi);
             filterDirMap2X<T>(msk2, tmp2, dst2M, plane, field, d, vsapi);
             expandDirMap2X<T>(msk2, dst2M, tmp2, plane, field, d, vsapi);
             fillGaps2X<T>(msk2, tmp2, dst2M, plane, field, d, vsapi);
             fillGaps2X<T>(msk2, dst2M, tmp2, plane, field, d, vsapi);
             if (d->map == 3)
                 continue;
-            interpolateLattice<T>(tmp2_2, tmp2, dst2, plane, field, d, vsapi);
+            interpolateLattice<T>(*tmp2_2, tmp2, dst2, plane, field, d, vsapi);
             if (d->pp == 1 || d->pp == 3) {
-                vsapi->freeFrame(tmp2_2);
-                tmp2_2 = vsapi->copyFrame(tmp2, core);
+                vsapi->freeFrame(*tmp2_2);
+                *tmp2_2 = vsapi->copyFrame(tmp2, core);
                 filterDirMap2X<T>(msk2, tmp2, dst2M, plane, field, d, vsapi);
                 expandDirMap2X<T>(msk2, dst2M, tmp2, plane, field, d, vsapi);
-                postProcess<T>(tmp2, tmp2_2, dst2, plane, field, d, vsapi);
+                postProcess<T>(tmp2, *tmp2_2, dst2, plane, field, d, vsapi);
             }
             if (d->pp == 2 || d->pp == 3) {
                 if (sizeof(T) == 1)
@@ -1337,7 +1336,7 @@ static void EEDI2(const VSFrameRef * src, VSFrameRef * dst, VSFrameRef * msk, VS
                 gaussianBlurSqrt2(cx2, tmpc, cx2, vsapi->getFrameWidth(src, plane), vsapi->getFrameHeight(src, plane), vsapi->getStride(src, plane) / d->vi->format->bytesPerSample);
                 gaussianBlurSqrt2(cy2, tmpc, cy2, vsapi->getFrameWidth(src, plane), vsapi->getFrameHeight(src, plane), vsapi->getStride(src, plane) / d->vi->format->bytesPerSample);
                 gaussianBlurSqrt2(cxy, tmpc, cxy, vsapi->getFrameWidth(src, plane), vsapi->getFrameHeight(src, plane), vsapi->getStride(src, plane) / d->vi->format->bytesPerSample);
-                postProcessCorner<T>(tmp2_2, dst2, cx2, cy2, cxy, plane, field, d, vsapi);
+                postProcessCorner<T>(*tmp2_2, dst2, cx2, cy2, cxy, plane, field, d, vsapi);
             }
         }
     }
@@ -1386,9 +1385,9 @@ static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void *
         }
 
         if (d->vi->format->bitsPerSample == 8)
-            EEDI2<uint8_t>(src, dst, msk, tmp, dst2, dst2M, tmp2, tmp2_2, msk2, cx2, cy2, cxy, tmpc, field, d, core, vsapi);
+            EEDI2<uint8_t>(src, dst, msk, tmp, dst2, dst2M, tmp2, &tmp2_2, msk2, cx2, cy2, cxy, tmpc, field, d, core, vsapi);
         else
-            EEDI2<uint16_t>(src, dst, msk, tmp, dst2, dst2M, tmp2, tmp2_2, msk2, cx2, cy2, cxy, tmpc, field, d, core, vsapi);
+            EEDI2<uint16_t>(src, dst, msk, tmp, dst2, dst2M, tmp2, &tmp2_2, msk2, cx2, cy2, cxy, tmpc, field, d, core, vsapi);
 
         vs_aligned_free(cx2);
         vs_aligned_free(cy2);
