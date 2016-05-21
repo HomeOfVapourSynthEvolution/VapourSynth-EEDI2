@@ -26,6 +26,7 @@
 */
 
 #include <algorithm>
+#include <cstdlib>
 #include <vapoursynth/VapourSynth.h>
 #include <vapoursynth/VSHelper.h>
 
