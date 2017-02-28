@@ -40,14 +40,14 @@ struct EEDI2Data {
     int16_t * limlut2;
 };
 
-static inline void memset16(void * ptr, const uint16_t value, size_t num) {
+static inline void memset16(void * ptr, const uint16_t value, size_t num) noexcept {
     uint16_t * tptr = static_cast<uint16_t *>(ptr);
     while (num-- > 0)
         *tptr++ = value;
 }
 
 template<typename T>
-static void buildEdgeMask(const VSFrameRef * src, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) {
+static void buildEdgeMask(const VSFrameRef * src, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T shift = d->vi->format->bitsPerSample - 8;
     const T ten = 10 << shift;
@@ -103,7 +103,7 @@ static void buildEdgeMask(const VSFrameRef * src, VSFrameRef * dst, const int pl
 }
 
 template<typename T>
-static void dilate(const VSFrameRef * msk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) {
+static void dilate(const VSFrameRef * msk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
 
     const int width = vsapi->getFrameWidth(msk, plane);
@@ -156,7 +156,7 @@ static void dilate(const VSFrameRef * msk, VSFrameRef * dst, const int plane, co
 }
 
 template<typename T>
-static void erode(const VSFrameRef * msk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) {
+static void erode(const VSFrameRef * msk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
 
     const int width = vsapi->getFrameWidth(msk, plane);
@@ -209,7 +209,7 @@ static void erode(const VSFrameRef * msk, VSFrameRef * dst, const int plane, con
 }
 
 template<typename T>
-static void removeSmallHorzGaps(const VSFrameRef * msk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) {
+static void removeSmallHorzGaps(const VSFrameRef * msk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
 
     const int width = vsapi->getFrameWidth(msk, plane);
@@ -244,7 +244,7 @@ static void removeSmallHorzGaps(const VSFrameRef * msk, VSFrameRef * dst, const 
 }
 
 template<typename T>
-static void calcDirections(const VSFrameRef * src, const VSFrameRef * msk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) {
+static void calcDirections(const VSFrameRef * src, const VSFrameRef * msk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T four = 4 << (d->vi->format->bitsPerSample - 8);
@@ -389,7 +389,7 @@ static void calcDirections(const VSFrameRef * src, const VSFrameRef * msk, VSFra
 }
 
 template<typename T>
-static void filterMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) {
+static void filterMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T shift = d->vi->format->bitsPerSample - 8;
@@ -476,7 +476,7 @@ static void filterMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRe
 }
 
 template<typename T>
-static void filterDirMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) {
+static void filterDirMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T four = 4 << (d->vi->format->bitsPerSample - 8);
@@ -558,7 +558,7 @@ static void filterDirMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFram
 }
 
 template<typename T>
-static void filterDirMap2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) {
+static void filterDirMap2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T four = 4 << (d->vi->format->bitsPerSample - 8);
@@ -648,7 +648,7 @@ static void filterDirMap2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFr
 }
 
 template<typename T>
-static void expandDirMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) {
+static void expandDirMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T four = 4 << (d->vi->format->bitsPerSample - 8);
@@ -724,7 +724,7 @@ static void expandDirMap(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFram
 }
 
 template<typename T>
-static void expandDirMap2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) {
+static void expandDirMap2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T four = 4 << (d->vi->format->bitsPerSample - 8);
@@ -808,7 +808,7 @@ static void expandDirMap2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFr
 }
 
 template<typename T>
-static void fillGaps2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) {
+static void fillGaps2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T shift = d->vi->format->bitsPerSample - 8;
@@ -924,13 +924,13 @@ static void fillGaps2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameR
     }
 }
 
-static inline void upscaleBy2(const VSFrameRef * src, VSFrameRef * dst, const int plane, const int field, const int bytesPerSample, const VSAPI * vsapi) {
+static inline void upscaleBy2(const VSFrameRef * src, VSFrameRef * dst, const int plane, const int field, const int bytesPerSample, const VSAPI * vsapi) noexcept {
     vs_bitblt(vsapi->getWritePtr(dst, plane) + vsapi->getStride(dst, plane) * (1 - field), vsapi->getStride(dst, plane) * 2,
               vsapi->getReadPtr(src, plane), vsapi->getStride(src, plane), vsapi->getFrameWidth(src, plane) * bytesPerSample, vsapi->getFrameHeight(src, plane));
 }
 
 template<typename T>
-static void markDirections2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) {
+static void markDirections2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T four = 4 << (d->vi->format->bitsPerSample - 8);
@@ -1016,7 +1016,7 @@ static void markDirections2X(const VSFrameRef * msk, const VSFrameRef * dmsk, VS
 }
 
 template<typename T>
-static void interpolateLattice(const VSFrameRef * omsk, VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) {
+static void interpolateLattice(const VSFrameRef * omsk, VSFrameRef * dmsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T shift = d->vi->format->bitsPerSample - 8;
@@ -1155,7 +1155,7 @@ static void interpolateLattice(const VSFrameRef * omsk, VSFrameRef * dmsk, VSFra
 }
 
 template<typename T>
-static void postProcess(const VSFrameRef * nmsk, const VSFrameRef * omsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) {
+static void postProcess(const VSFrameRef * nmsk, const VSFrameRef * omsk, VSFrameRef * dst, const int plane, const int field, const EEDI2Data * d, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (d->vi->format->bitsPerSample - 1);
     const T peak = (1 << d->vi->format->bitsPerSample) - 1;
     const T four = 4 << (d->vi->format->bitsPerSample - 8);
@@ -1191,7 +1191,7 @@ static void postProcess(const VSFrameRef * nmsk, const VSFrameRef * omsk, VSFram
 
 template<typename T>
 static void postProcessCorner(const VSFrameRef * msk, VSFrameRef * dst, const int * x2, const int * y2, const int * xy,
-                              const int plane, const int field, const int bitsPerSample, const VSAPI * vsapi) {
+                              const int plane, const int field, const int bitsPerSample, const VSAPI * vsapi) noexcept {
     const T neutral = 1 << (bitsPerSample - 1);
     const T peak = (1 << bitsPerSample) - 1;
 
@@ -1238,7 +1238,7 @@ static void postProcessCorner(const VSFrameRef * msk, VSFrameRef * dst, const in
 }
 
 template<typename T>
-static void gaussianBlur1(const VSFrameRef * src, VSFrameRef * tmp, VSFrameRef * dst, const int plane, const VSAPI * vsapi) {
+static void gaussianBlur1(const VSFrameRef * src, VSFrameRef * tmp, VSFrameRef * dst, const int plane, const VSAPI * vsapi) noexcept {
     const int width = vsapi->getFrameWidth(src, plane);
     const int height = vsapi->getFrameHeight(src, plane);
     const int stride = vsapi->getStride(src, plane) / sizeof(T);
@@ -1347,7 +1347,7 @@ static void gaussianBlur1(const VSFrameRef * src, VSFrameRef * tmp, VSFrameRef *
         dstp[x] = (src3p[x] * 582u + src2p[x] * 7078 + srcpp[x] * 31724 + srcp[x] * 26152 + 32768) / 65536;
 }
 
-static void gaussianBlurSqrt2(const int * src, int * tmp, int * dst, const int width, const int height) {
+static void gaussianBlurSqrt2(const int * src, int * tmp, int * dst, const int width, const int height) noexcept {
     const int * srcp = src;
     int * VS_RESTRICT dstp = tmp;
 
@@ -1498,7 +1498,7 @@ static void gaussianBlurSqrt2(const int * src, int * tmp, int * dst, const int w
 }
 
 template<typename T>
-static void calcDerivatives(const VSFrameRef * src, int * VS_RESTRICT x2, int * VS_RESTRICT y2, int * VS_RESTRICT xy, const int plane, const int bitsPerSample, const VSAPI * vsapi) {
+static void calcDerivatives(const VSFrameRef * src, int * VS_RESTRICT x2, int * VS_RESTRICT y2, int * VS_RESTRICT xy, const int plane, const int bitsPerSample, const VSAPI * vsapi) noexcept {
     const T shift = bitsPerSample - 8;
 
     const int width = vsapi->getFrameWidth(src, plane);
@@ -1603,7 +1603,7 @@ template<typename T>
 static void process(const VSFrameRef * src, VSFrameRef * dst, VSFrameRef * msk, VSFrameRef * tmp,
                     VSFrameRef * dst2, VSFrameRef * dst2M, VSFrameRef * tmp2, VSFrameRef ** tmp2_2, VSFrameRef * msk2,
                     int * VS_RESTRICT cx2, int * VS_RESTRICT cy2, int * VS_RESTRICT cxy, int * VS_RESTRICT tmpc,
-                    const int field, const EEDI2Data * d, VSCore * core, const VSAPI * vsapi) {
+                    const int field, const EEDI2Data * d, VSCore * core, const VSAPI * vsapi) noexcept {
     for (int plane = 0; plane < d->vi->format->numPlanes; plane++) {
         buildEdgeMask<T>(src, msk, plane, d, vsapi);
         erode<T>(msk, tmp, plane, d, vsapi);
