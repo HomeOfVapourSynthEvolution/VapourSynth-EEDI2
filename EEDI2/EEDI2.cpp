@@ -29,6 +29,8 @@
 #include <cstdlib>
 #include <memory>
 #include <string>
+#include <thread>
+#include <unordered_map>
 
 #include <VapourSynth.h>
 #include <VSHelper.h>
@@ -41,6 +43,7 @@ struct EEDI2Data {
     unsigned fieldS, nt4, nt7, nt8, nt13, nt19;
     int8_t * limlut;
     int16_t * limlut2;
+    std::unordered_map<std::thread::id, int *> cx2, cy2, cxy, tmpc;
 };
 
 template<typename T>
@@ -1603,8 +1606,13 @@ static void postProcessCorner(const VSFrameRef * msk, VSFrameRef * dst, const in
 template<typename T>
 static void process(const VSFrameRef * src, VSFrameRef * dst, VSFrameRef * msk, VSFrameRef * tmp,
                     VSFrameRef * dst2, VSFrameRef * dst2M, VSFrameRef * tmp2, VSFrameRef * tmp2_2, VSFrameRef * msk2,
-                    int * cx2, int * cy2, int * cxy, int * tmpc,
                     const unsigned field, const EEDI2Data * d, VSCore * core, const VSAPI * vsapi) noexcept {
+    const auto threadId = std::this_thread::get_id();
+    int * cx2 = d->cx2.at(threadId);
+    int * cy2 = d->cy2.at(threadId);
+    int * cxy = d->cxy.at(threadId);
+    int * tmpc = d->tmpc.at(threadId);
+
     for (int plane = 0; plane < d->vi->format->numPlanes; plane++) {
         buildEdgeMask<T>(src, msk, plane, d, vsapi);
         erode<T>(msk, tmp, plane, d, vsapi);
@@ -1662,21 +1670,60 @@ static void VS_CC eedi2Init(VSMap *in, VSMap *out, void **instanceData, VSNode *
 }
 
 static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    const EEDI2Data * d = static_cast<const EEDI2Data *>(*instanceData);
+    EEDI2Data * d = static_cast<EEDI2Data *>(*instanceData);
 
     if (activationReason == arInitial) {
         vsapi->requestFrameFilter(n, d->node, frameCtx);
     } else if (activationReason == arAllFramesReady) {
-        int * cx2 = nullptr, * cy2 = nullptr, * cxy = nullptr, * tmpc = nullptr;
-        if (d->pp > 1 && d->map == 0) {
-            cx2 = new int[d->vi->width * d->vi->height];
-            cy2 = new int[d->vi->width * d->vi->height];
-            cxy = new int[d->vi->width * d->vi->height];
-            tmpc = new int[d->vi->width * d->vi->height];
-            if (!cx2 || !cy2 || !cxy || !tmpc) {
-                vsapi->setFilterError("EEDI2: malloc failure (pp>1)", frameCtx);
-                return nullptr;
+        try {
+            auto threadId = std::this_thread::get_id();
+
+            if (!d->cx2.count(threadId)) {
+                if (d->pp > 1 && d->map == 0) {
+                    int * cx2 = new (std::nothrow) int[d->vi->width * d->vi->height];
+                    if (!cx2)
+                        throw std::string{ "malloc failure (cx2)" };
+                    d->cx2.emplace(threadId, cx2);
+                } else {
+                    d->cx2.emplace(threadId, nullptr);
+                }
             }
+
+            if (!d->cy2.count(threadId)) {
+                if (d->pp > 1 && d->map == 0) {
+                    int * cy2 = new (std::nothrow) int[d->vi->width * d->vi->height];
+                    if (!cy2)
+                        throw std::string{ "malloc failure (cy2)" };
+                    d->cy2.emplace(threadId, cy2);
+                } else {
+                    d->cy2.emplace(threadId, nullptr);
+                }
+            }
+
+            if (!d->cxy.count(threadId)) {
+                if (d->pp > 1 && d->map == 0) {
+                    int * cxy = new (std::nothrow) int[d->vi->width * d->vi->height];
+                    if (!cxy)
+                        throw std::string{ "malloc failure (cxy)" };
+                    d->cxy.emplace(threadId, cxy);
+                } else {
+                    d->cxy.emplace(threadId, nullptr);
+                }
+            }
+
+            if (!d->tmpc.count(threadId)) {
+                if (d->pp > 1 && d->map == 0) {
+                    int * tmpc = new (std::nothrow) int[d->vi->width * d->vi->height];
+                    if (!tmpc)
+                        throw std::string{ "malloc failure (tmpc)" };
+                    d->tmpc.emplace(threadId, tmpc);
+                } else {
+                    d->tmpc.emplace(threadId, nullptr);
+                }
+            }
+        } catch (const std::string & error) {
+            vsapi->setFilterError(("EEDI2: " + error).c_str(), frameCtx);
+            return nullptr;
         }
 
         const VSFrameRef * src = vsapi->getFrameFilter(n, d->node, frameCtx);
@@ -1698,14 +1745,9 @@ static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void *
             field = (n & 1) ? (d->fieldS == 2 ? 1 : 0) : (d->fieldS == 2 ? 0 : 1);
 
         if (d->vi->format->bytesPerSample == 1)
-            process<uint8_t>(src, dst, msk, tmp, dst2, dst2M, tmp2, tmp2_2, msk2, cx2, cy2, cxy, tmpc, field, d, core, vsapi);
+            process<uint8_t>(src, dst, msk, tmp, dst2, dst2M, tmp2, tmp2_2, msk2, field, d, core, vsapi);
         else
-            process<uint16_t>(src, dst, msk, tmp, dst2, dst2M, tmp2, tmp2_2, msk2, cx2, cy2, cxy, tmpc, field, d, core, vsapi);
-
-        delete[] cx2;
-        delete[] cy2;
-        delete[] cxy;
-        delete[] tmpc;
+            process<uint16_t>(src, dst, msk, tmp, dst2, dst2M, tmp2, tmp2_2, msk2, field, d, core, vsapi);
 
         if (d->map == 0) {
             vsapi->freeFrame(dst);
@@ -1734,9 +1776,21 @@ static const VSFrameRef *VS_CC eedi2GetFrame(int n, int activationReason, void *
 
 static void VS_CC eedi2Free(void *instanceData, VSCore *core, const VSAPI *vsapi) {
     EEDI2Data * d = static_cast<EEDI2Data *>(instanceData);
+
     vsapi->freeNode(d->node);
+
     delete[] d->limlut;
     delete[] d->limlut2;
+
+    for (auto & element : d->cx2)
+        delete[] element.second;
+    for (auto & element : d->cy2)
+        delete[] element.second;
+    for (auto & element : d->cxy)
+        delete[] element.second;
+    for (auto & element : d->tmpc)
+        delete[] element.second;
+
     delete d;
 }
 
@@ -1857,6 +1911,12 @@ static void VS_CC eedi2Create(const VSMap *in, VSMap *out, void *userData, VSCor
         d->nt8 = nt * 8;
         d->nt13 = nt * 13;
         d->nt19 = nt * 19;
+
+        const unsigned numThreads = vsapi->getCoreInfo(core)->numThreads;
+        d->cx2.reserve(numThreads);
+        d->cy2.reserve(numThreads);
+        d->cxy.reserve(numThreads);
+        d->tmpc.reserve(numThreads);
     } catch (const std::string & error) {
         vsapi->setError(out, ("EEDI2: " + error).c_str());
         vsapi->freeNode(d->node);
