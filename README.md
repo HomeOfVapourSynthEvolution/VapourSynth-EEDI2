@@ -38,3 +38,13 @@ Usage
   * 1 = check for spatial consistency of final interpolation directions
   * 2 = check for junctions and corners
   * 3 = do both 1 and 2
+
+
+Compilation
+===========
+
+```
+./autogen.sh
+./configure
+make
+```
