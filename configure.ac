@@ -7,21 +7,17 @@ AM_SILENT_RULES([yes])
 
 LT_INIT([disable-static win32-dll])
 
-AC_PROG_CXX
-
 AC_CANONICAL_HOST
+
+AC_PROG_CXX
 
 
 X86="false"
-PPC="false"
-ARM="false"
 
 AS_CASE(
         [$host_cpu],
         [i?86], [BITS="32" X86="true"],
-        [x86_64], [BITS="64" X86="true"],
-        [powerpc*], [PPC="true"],
-        [arm*], [ARM="true"]
+        [x86_64], [BITS="64" X86="true"]
 )
 
 AS_CASE(
